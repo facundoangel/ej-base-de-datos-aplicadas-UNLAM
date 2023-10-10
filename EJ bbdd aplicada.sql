@@ -676,3 +676,28 @@ BEGIN
 
 END
 
+-- EJ 18
+/*
+Cree una vista que presente una vista PIVOT de cantidad de inscripciones para las
+materias por cada turno. Utilice su criterio para presentarlo de la manera que
+considere más clara.
+*/
+
+
+SELECT *
+FROM DDBBA.PERSONA
+
+SELECT *
+FROM DDBBA.ESTUDIA_EN
+
+
+SELECT 'EXISTENCE' AS EXISTENCE, [13], [3]
+FROM (
+	SELECT *
+	FROM DDBBA.PERSONA P, DDBBA.ESTUDIA_EN EN
+	WHERE P.ID=EN.ID_PERSONA
+) AS A
+PIVOT(
+	ID_MAT
+	FOR ID IN ([13], [3]) 
+) AS P
