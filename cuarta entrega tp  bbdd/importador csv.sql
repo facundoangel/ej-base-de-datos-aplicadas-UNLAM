@@ -1,17 +1,95 @@
 
---IMPORTACION Y LIMPIEZA DE DATOS DE LA TABLA MEDICOS
---======================================================================
+/********************************************************************
+MATERIA: BASES DE DATOS APLICADA
+FECHA DE ENTREGA: 11/10/2023
+NUMERO DE GRUPO:5
+INTEGRANTES:
+ -Daniel Corbellini. DNI: 42.875.486
+ -Facundo Angel. DNI: 40.640.923
+ -Gustavo Rosales. DNI: 43.665.940
+ -Kevin Raimo Lugo. DNI: 43.915.535
+/********************************************************************/
+*/
+
+
+
+
+
+--CREACION DE TABLAS (REALIZADAS EN LA TERCER ENTREGA)
+
+
+CREATE TABLE ESPECIALIDAD(
+Id_especialidad INT NOT NULL,
+Nombre VARCHAR(10),
+CONSTRAINT PK_ESPECIALIDAD PRIMARY KEY
+(Id_especialidad)
+)
+
 CREATE TABLE MEDICO(
+Id_medico INT NOT NULL,
+Id_espec INT NOT NULL,
+Nombre VARCHAR(15),
+Apellido VARCHAR(20),
+Nro_mat INT,
+CONSTRAINT PK_MEDICO PRIMARY KEY
+(Id_medico),
+CONSTRAINT FK_MED_ESPEC FOREIGN KEY(Id_espec)
+REFERENCES Especialidad(Id_especialidad)
+)
+
+CREATE TABLE PACIENTE(
+ID_Histo_Clinica INT NOT NULL,/*¨No tengo aclaraciones sobre este dato*/
+Nombre VARCHAR(20),
+Apellido VARCHAR(30),
+Apel_materno VARCHAR(30),
+Fech_nacimiento DATE,
+Tip_Documento VARCHAR(10),
+Num_Documento INT,
+Sex_Biologico VARCHAR(10),
+Genero VARCHAR(10),
+Nacionalidad VARCHAR(10),
+Fot_perfil VARBINARY(MAX), /*El tipo de dato image no se encuentra disponible para esta versión de SQL*/
+/*Varbinary permite almacenar datos en binario con u máximo de 2GB*/
+Mail NVARCHAR(35),
+Telef_fijo VARCHAR(20),
+Tel_alternativo VARCHAR(20),
+Tel_laboral VARCHAR(20),
+Fech_registro DATE,
+Fech_actualiz DATE,
+Usuario_act Nvarchar(20),/* Entendemos que se refiera a la actualización de contraseña de usuario. El id de usuario corresponde al DNI del paciente*/
+/*Contraints*/
+CONSTRAINT PK_PACIENTE PRIMARY KEY(ID_Histo_Clinica)
+)
+
+CREATE TABLE PRESTADOR(
+	ID IDENTITY(1,1),
+	PRESTADOR VARCHAR(40),
+	PLAN_PREST VARCHAR(40)
+)
+
+CREATE TABLE SEDE(
+	ID IDENTITY(1,1)
+	,SEDE VARCHAR(40)
+	,DIRECCION VARCHAR(40)
+	,LOCALIDAD VARCHAR(40)
+	,PROVINCIA VARCHAR(40)
+)
+
+
+--============================================================================
+--IMPORTACION Y LIMPIEZA DE DATOS DE LA TABLA MEDICOS
+--==========================================================================
+CREATE TABLE MEDICO_AUX(
 	NOMBRE NVARCHAR(40),
 	APELLIDO NVARCHAR(40),
 	ESPECIALIDAD NVARCHAR(40),
-	NUMERO_COLEGIADO INT PRIMARY KEY
+	NUMERO_COLEGIADO INT
 );
 GO
 
 
 CREATE TRIGGER LIMPIADOR_INFORMACION_MEDICOS
-ON MEDICO AFTER INSERT 
+ON MEDICO_AUX AFTER INSERT 
 AS
 BEGIN
 
@@ -70,7 +148,7 @@ BEGIN
 
 	
 
-		UPDATE MEDICO SET NOMBRE=@NOMBRE_NUEVO, APELLIDO=@APELLIDO_NUEVO, ESPECIALIDAD=@ESPECIALIDAD 
+		UPDATE MEDICO_AUX SET NOMBRE=@NOMBRE_NUEVO, APELLIDO=@APELLIDO_NUEVO, ESPECIALIDAD=@ESPECIALIDAD 
 		WHERE NUMERO_COLEGIADO=@MATRICULA
 
 		SET @I=@I+1;
@@ -81,7 +159,7 @@ END
 GO
 
 
-BULK INSERT MEDICO
+BULK INSERT MEDICO_AUX
 FROM 'C:\Users\facun\OneDrive\Escritorio\cuarta entrega bbdd\Medicos.csv'
 WITH(
 	FIELDTERMINATOR=';',
@@ -100,7 +178,7 @@ GO
 --======================================================================
 
 
-CREATE TABLE PACIENTE(
+CREATE TABLE PACIENTE_AUX(
 	NOMBRE NVARCHAR(40),
 	APELLIDO NVARCHAR(40),
 	FECHA_NAC DATE,
@@ -119,7 +197,7 @@ GO
 
 
 CREATE TRIGGER LIMPIADOR_INFORMACION_PACIENTES
-ON PACIENTE AFTER INSERT 
+ON PACIENTE_AUX AFTER INSERT 
 AS
 BEGIN
 
@@ -154,7 +232,7 @@ BEGIN
 		WHERE R.NRO_REG=@I
 
 
-		UPDATE PACIENTE SET FECHA_NAC=@FECHA_NAC,
+		UPDATE PACIENTE_AUX SET FECHA_NAC=@FECHA_NAC,
 		SEXO = @SEXO,
 		DIRECCION = @DIRECCION,
 		LOCALIDAD = @LOCALIDAD,
@@ -169,7 +247,7 @@ END
 GO
 
 
-BULK INSERT PACIENTE
+BULK INSERT PACIENTE_AUX
 FROM 'C:\Users\facun\OneDrive\Escritorio\cuarta entrega bbdd\Pacientes.csv'
 WITH(
 	FIELDTERMINATOR=';',
@@ -188,12 +266,6 @@ GO
 --======================================================================
 
 
-CREATE TABLE PRESTADOR(
-	ID INT IDENTITY(1,1) PRIMARY KEY,
-	PRESTADOR VARCHAR(40),
-	PLAN_PREST VARCHAR(40)
-)
-GO
 
 CREATE TABLE PRESTADOR_AUX(
 	PRESTADOR VARCHAR(40),
@@ -230,7 +302,7 @@ BEGIN
 		WHERE R.NRO_REG=@I
 
 
-		INSERT INTO PRESTADOR VALUES (@PRESTADOR,@PLAN_PREST);
+		--INSERT INTO PRESTADOR VALUES (@PRESTADOR,@PLAN_PREST);
 		
 		SET @I=@I+1;
 	END
@@ -255,7 +327,7 @@ GO
 --IMPORTACION Y LIMPIEZA DE DATOS DE LA TABLA SEDES
 
 --======================================================================
-CREATE TABLE SEDE(
+CREATE TABLE SEDE_AUX(
 	SEDE VARCHAR(40)
 	,DIRECCION VARCHAR(40)
 	,LOCALIDAD VARCHAR(40)
@@ -312,3 +384,49 @@ WITH(
 	CODEPAGE = '65001'
 )
 GO
+
+/* Adicionalmente se requiere que el sistema sea capaz de generar un archivo XML detallando los
+	* turnos atendidos para informar a la Obra Social. El mismo debe constar de los datos del paciente
+	* (Apellido, nombre, DNI), nombre y matrícula del profesional que lo atendió, fecha, hora,
+	* especialidad. Los parámetros de entrada son el nombrede la obra social y un intervalo de fechas.
+	*/
+ CREATE OR ALTER PROCEDURE EXPORTAR_TURNOS_A_XML @FechaInicio date, @FechaFin date, @NombrePrestador VARCHAR(20) AS
+	EXEC master.dbo.sp_configure 'show advanced options', 1
+	RECONFIGURE
+	EXEC master.dbo.sp_configure 'xp_cmdshell', 1
+	RECONFIGURE;
+
+	DROP TABLE IF EXISTS ##DatosTurno;
+
+	SELECT 
+		PC.Nombre AS Nombre_Paciente, 
+		PC.Apellido AS Apellido_Paciente, 
+		PC.Num_Documento AS DNI_Paciente,
+		MD.Nombre AS Nombre_Medico, 
+		MD.Apellido AS Apellido_Medico, 
+		MD.Nro_mat AS Matricula, 
+		ES.Nombre AS Especialidad,
+		RT.Fecha,
+		RT.Hora
+	INTO ##DatosTurno
+	FROM 
+		Reserva_turno RT 
+		JOIN paciente PC ON RT.Id_hist_clinica = PC.ID_Histo_Clinica 
+		JOIN cobertura CB ON RT.Id_hist_clinica = CB.Id_hist_clin 
+		JOIN Prestador PR ON CB.Id_cobertura = PR.Id_cober 
+		JOIN Estado_turno ET ON RT.id_est_turno = ET.id_estado 
+		JOIN Dias_x_sede DS ON RT.Id_diasSede = DS.Id_sede 
+		JOIN Medico MD ON MD.Id_medico = DS.Id_medico 
+		JOIN Especialidad ES ON MD.Id_espec = ES.id_especialidad 
+	WHERE 
+		ET.nombre = 'Atendido'
+		AND RT.Fecha BETWEEN @FechaInicio AND @FechaFin
+		AND PR.nombre = @NombrePrestador
+	
+	EXEC xp_cmdshell 'BCP "SELECT * FROM ##DatosTurno FOR XML PATH(''Turno'')" QUERYOUT "C:\export_turnos.xml" -e "C:/error_export.txt" -T -c -t,';
+GO
+
+EXEC EXPORTAR_TURNOS_A_XML
+	 @FechaInicio = '2020-02-20',
+	 @FechaFin = '2024-02-20',
+	 @NombrePrestador  = 'Prestador A';
